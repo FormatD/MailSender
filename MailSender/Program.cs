@@ -63,8 +63,10 @@ namespace MailSender
             {
                 _config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(_settingFile));
 
-                if (string.IsNullOrWhiteSpace(options.SendTo))
+                if (!string.IsNullOrWhiteSpace(options.SendTo))
                     _config.SendTo = options.SendTo;
+                if (options.MaxFileSize > 0)
+                    _config.MaxSize = options.MaxFileSize;
             }
             catch (Exception)
             {
