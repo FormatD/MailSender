@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Net.Mail;
 using CommandLine;
 using Newtonsoft.Json;
 using NLog;
@@ -75,22 +74,5 @@ namespace MailSender
             }
         }
 
-    }
-
-
-    public class SendArg
-    {
-        public string File { get; set; }
-
-        public int RetryTime { get; set; }
-
-        public SmtpClient Client { get; set; }
-
-        public MailMessage Message { get; set; }
-
-        public SendArg Retry()
-        {
-            return new SendArg { File = File, RetryTime = RetryTime + 1, Client = Client, Message = Message };
-        }
     }
 }

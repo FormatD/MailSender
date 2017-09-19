@@ -7,6 +7,8 @@ using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
 using NLog;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace MailSender
 {
@@ -22,6 +24,7 @@ namespace MailSender
 
         public void SendEmail(string file, string subject = null)
         {
+            var queue = new ConcurrentQueue<string>();
             if (!File.Exists(file))
             {
                 _logger.Error("file \"{0}\" was not existed.", file);
@@ -33,6 +36,8 @@ namespace MailSender
 
             foreach (var fileFragement in fileList)
             {
+                queue.Enqueue(fileFragement);
+
                 SmtpClient client = new SmtpClient(_config.SmtpServerAddress, _config.SmtpServerPort)
                 {
                     EnableSsl = true,
@@ -47,13 +52,18 @@ namespace MailSender
                 try
                 {
                     _logger.Info($"begin send file {fileFragement}.");
-                    //client.Send(message);
-                    client.SendAsync(message, new SendArg { File = fileFragement, RetryTime = 0, Client = client, Message = message });
+                    // client.Send(message);
+                    client.SendAsync(message, new SendArg { File = fileFragement, RetryTime = 0, Client = client, Message = message, QueuedFiles = queue });
                 }
                 catch (Exception ex)
                 {
                     _logger.Error($"Exception caught in SendEmail(): {ex}");
                 }
+            }
+
+            while (queue.Any())
+            {
+                Thread.Sleep(100);
             }
         }
 
@@ -72,6 +82,10 @@ namespace MailSender
             else
             {
                 _logger.Info($"Sucess when send file {sendArg.File} ,the {sendArg.RetryTime + 1} times.");
+                string fileName;
+                while (!sendArg.QueuedFiles.TryDequeue(out fileName))
+                {
+                }
             }
         }
 
