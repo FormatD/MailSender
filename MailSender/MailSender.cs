@@ -67,6 +67,10 @@ namespace MailSender
                 var message = CreateMessage(fileFragement, subject);
                 try
                 {
+                    while (queue.Count > _config.MaxSendQueueCount)
+                    {
+                        Thread.Sleep(300);
+                    }
                     _logger.Info($"begin send file {fileFragement}.");
                     // client.Send(message);
                     client.SendAsync(message, new SendArg { File = fileFragement, RetryTime = 0, Client = client, Message = message, QueuedFiles = queue });

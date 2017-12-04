@@ -13,5 +13,7 @@ namespace MailSender
         public string UserPass { get; set; } = "";
 
         public string PackagesSavePath { get; set; } = @"D:\Microsoft.Nuget.Packages\";
+
+        public int MaxSendQueueCount { get; set; } = 1;
     }
 }

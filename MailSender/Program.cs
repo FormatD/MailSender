@@ -26,13 +26,10 @@ namespace MailSender
                     (SendFileOptions opts) =>
                     {
                         EnsureConfigFile(opts);
-                        new MailSender(_config).SendEmail(opts.FileToSend, opts.Subject);
+                        new MailSender(_config).SendEmail(opts.FileToSend, opts.Subject, opts.Reuse);
                         return "0";
                     },
-                    _ =>
-                    {
-                        return "2";
-                    });
+                    _ => "2");
 
             return texts.Equals("1") ? 1 : 0;
         }
@@ -66,6 +63,8 @@ namespace MailSender
                     _config.SendTo = options.SendTo;
                 if (options.MaxFileSize > 0)
                     _config.MaxSize = options.MaxFileSize;
+                if (_config.MaxSendQueueCount <= 0)
+                    _config.MaxSendQueueCount = 1;
             }
             catch (Exception)
             {
