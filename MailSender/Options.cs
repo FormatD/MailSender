@@ -28,6 +28,10 @@ namespace MailSender
         [Option('m', "maxSize", HelpText = "max splited file size in byte.")]
         public int MaxFileSize { get; set; }
 
+        [Option(
+            HelpText = "Reuse last process result.")]
+        public bool Reuse { get; set; }
+
         [Usage]
         public static IEnumerable<Example> Usage => new List<Example>
         {

@@ -16,13 +16,15 @@ namespace MailSender
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly Config _config;
+        private string _taskFile;
+        private const string TaskFolder = "tasks";
 
         public MailSender(Config config)
         {
             _config = config;
         }
 
-        public void SendEmail(string file, string subject = null)
+        public void SendEmail(string file, string subject = null, bool reuse = false)
         {
             var queue = new ConcurrentQueue<string>();
             if (!File.Exists(file))
@@ -30,15 +32,29 @@ namespace MailSender
                 _logger.Error("file \"{0}\" was not existed.", file);
                 return;
             }
-
             subject = subject ?? Path.GetFileNameWithoutExtension(file);
-            var fileList = SplitFile(file);
+
+            var size = new FileInfo(file).Length;
+            _taskFile = Path.Combine(TaskFolder, $"{subject}_{size}");
+
+            EnsureDirectory(TaskFolder);
+
+            var fileList = SplitFile(file).ToList();
+            if (reuse)
+            {
+                var finishedFragements = File.ReadAllLines(_taskFile);
+                fileList = fileList.Where(x => !finishedFragements.Contains(x)).ToList();
+            }
+            else
+            {
+                File.Delete(_taskFile);
+            }
 
             foreach (var fileFragement in fileList)
             {
                 queue.Enqueue(fileFragement);
 
-                SmtpClient client = new SmtpClient(_config.SmtpServerAddress, _config.SmtpServerPort)
+                var client = new SmtpClient(_config.SmtpServerAddress, _config.SmtpServerPort)
                 {
                     EnableSsl = true,
                     UseDefaultCredentials = true,
@@ -67,7 +83,13 @@ namespace MailSender
             }
         }
 
-        private static void Client_SendCompleted(object sender, AsyncCompletedEventArgs e)
+        private static void EnsureDirectory(string folderName)
+        {
+            if (!Directory.Exists(folderName))
+                Directory.CreateDirectory(folderName);
+        }
+
+        private void Client_SendCompleted(object sender, AsyncCompletedEventArgs e)
         {
             var sendArg = e.UserState as SendArg;
             if (sendArg == null)
@@ -76,12 +98,16 @@ namespace MailSender
             if (e.Error != null)
             {
                 _logger.Warn($"Error when send file {sendArg.File} ,the {sendArg.RetryTime + 1} times.");
+                _logger.Warn(e.Error);
                 //if (sendArg.RetryTime < 3)
                 sendArg.Client.SendAsync(sendArg.Message, sendArg.Retry());
             }
             else
             {
                 _logger.Info($"Sucess when send file {sendArg.File} ,the {sendArg.RetryTime + 1} times.");
+
+                File.AppendAllText(_taskFile, sendArg.File + Environment.NewLine);
+
                 string fileName;
                 while (!sendArg.QueuedFiles.TryDequeue(out fileName))
                 {
